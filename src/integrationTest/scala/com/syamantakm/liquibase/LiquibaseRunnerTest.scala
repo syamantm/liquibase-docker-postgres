@@ -23,7 +23,7 @@ class LiquibaseRunnerTest extends FlatSpec with Matchers {
 
 
   "A Database Test" should "insert data" in {
-    setupDatabase("/persons.csv")
+    classPathDataSet("/persons.csv") loadedToDatabase
 
     val handle = dbi.open()
     val rowCount = handle.createQuery("SELECT count(1) FROM person").map(IntegerMapper.FIRST).first()
@@ -41,18 +41,22 @@ class LiquibaseRunnerTest extends FlatSpec with Matchers {
     new HikariDataSource(config)
   }
 
-  def setupDatabase(fileName: String) = {
-    val data = new util.ArrayList[Operation]
-    data.add(deleteAllFrom("person"))
-    val lines = scala.io.Source.fromURL(getClass.getResource(fileName)).getLines
-    lines.map(a => {
-      val query = s"insert into person values($a)"
-      logger.info(query)
-      sql(query)
-    }).foreach(insert => data.add(insert))
-    data
+  def classPathDataSet(fileName: String) =
+    DataSet(scala.io.Source.fromURL(getClass.getResource(fileName)).getLines)
 
-    val dbSetup = new DbSetup(new DataSourceDestination(dataSource), sequenceOf(data))
-    dbSetup.launch
+  
+  case class DataSet(lines: Iterator[String]) {
+    
+    def loadedToDatabase = {
+      val data = new util.ArrayList[Operation]
+      data.add(deleteAllFrom("person"))
+
+      lines
+        .map(a => sql(s"insert into person values($a)"))
+        .foreach(insert => data.add(insert))
+      
+      val dbSetup = new DbSetup(new DataSourceDestination(dataSource), sequenceOf(data))
+      dbSetup.launch
+    }
   }
 }
