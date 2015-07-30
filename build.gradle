@@ -28,6 +28,13 @@ repositories {
     mavenCentral()
 }
 
+sourceSets {
+    integrationTest {
+        scala.srcDir file('src/integrationTest/scala')
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
 dependencies {
     compile 'org.scala-lang:scala-library:2.11.6'
     compile 'org.liquibase:liquibase-core:3.3.5'
@@ -39,6 +46,17 @@ dependencies {
     testCompile 'org.testng:testng:6.8'
     testCompile group: 'org.mockito', name: 'mockito-core', version: '1.10.19'
     testCompile 'org.scalatest:scalatest_2.11:3.0.0-SNAP5'
+    testCompile "org.postgresql:postgresql:9.4-1201-jdbc41"
+    testCompile "com.zaxxer:HikariCP:2.4.0"
+    testCompile 'com.ninja-squad:DbSetup:1.6.0'
+    testCompile 'org.jdbi:jdbi:2.63.1'
+
+    integrationTestCompile sourceSets.main.output
+    integrationTestCompile configurations.testCompile
+    integrationTestCompile sourceSets.test.output
+    integrationTestCompile configurations.testRuntime
+
+
 }
 
 scalaStyle {
@@ -46,3 +64,14 @@ scalaStyle {
     source = ['server/src/main/scala', 'client/src/main/scala']
 }
 
+task integrationTest(type: Test) {
+    testClassesDir = sourceSets.integrationTest.output.classesDir
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    testLogging {
+        showStandardStreams = true
+    }
+    systemProperties = System.getProperties()
+}
+
+
+check.dependsOn integrationTest
